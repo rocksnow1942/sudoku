@@ -68,3 +68,9 @@ ol, ul {
   /* flex-wrap: nowrap;
   flex-direction: row; */
 }
+
+.inputmenu {
+  width: 100px;
+  position: absolute;
+  margin:-1px;
+}

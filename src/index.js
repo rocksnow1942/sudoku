@@ -6,52 +6,134 @@ import './index.css';
 function Square(props) {
     return (
         <div className="square">
-            <button className="square-inside" onClick={props.onClick}>
+            <button className="square-inside" onClick={props.onClick} style={props.style}>
                 {props.value}
             </button></div>
     );
 }
 
 
-class Board extends React.Component {
-    renderSquare(i) {
-        return (<Square value={this.props.squares[i]}
-            onClick={() => this.props.onClick(i)} />);
-    }
+class ThreeByThreeBoard extends React.Component {
     render() {
+        let fill = this.props.fill;
+        
+        let r = [];
+        for (let i=0;i<9;i++) {
+            r.push(
+                <Square key= {i} value={fill[i]} onClick={(e) => this.props.onClick(i,this.props.sec,e)} />
+            )
+        }
         return (
-            <div>
+            <div className="three-board">
                 <div className="board-row">
-                    {this.renderSquare(0)}
-                    {this.renderSquare(1)}
-                    {this.renderSquare(2)}
+                    {r.slice(0, 3)}
                 </div>
                 <div className="board-row">
-                    {this.renderSquare(3)}
-                    {this.renderSquare(4)}
-                    {this.renderSquare(5)}
+                    {r.slice(3, 6)}
                 </div>
                 <div className="board-row">
-                    {this.renderSquare(6)}
-                    {this.renderSquare(7)}
-                    {this.renderSquare(8)}
+                    {r.slice(6, 9)}
                 </div>
             </div>
-
         );
     }
 }
 
+class InputMenu extends React.Component {
+    
+    render() {   
+        return (
+            <div className="inputmenu" style={this.props.showMenu}>
+                <div className="board-row">
+                    <Square style={{ background: 'aqua', "lineHeight":"20px"}} value={1} onClick={() => this.props.onClick(1)} />
+                    <Square style={{ background: 'aqua', "lineHeight": "20px" }} value={2} onClick={() => this.props.onClick(2)} />
+                    <Square style={{ background: 'aqua', "lineHeight": "20px" }} value={3} onClick={() => this.props.onClick(3)} />
+                </div>
+                <div className="board-row">
+                    <Square style={{ background: 'aqua', "lineHeight": "20px" }} value={4} onClick={() => this.props.onClick(4)} />
+                    <Square style={{ background: 'aqua', "lineHeight": "20px" }} value={5} onClick={() => this.props.onClick(5)} />
+                    <Square style={{ background: 'aqua', "lineHeight": "20px" }} value={6} onClick={() => this.props.onClick(6)} />
+                </div>
+                <div className="board-row">
+                    <Square style={{ background: 'aqua', "lineHeight":"20px"}} value={7} onClick={() => this.props.onClick(7)} />
+                    <Square style={{ background: 'aqua', "lineHeight":"20px"}} value={8} onClick={() => this.props.onClick(8)} />
+                    <Square style={{ background: 'aqua', "lineHeight":"20px"}} value={9} onClick={() => this.props.onClick(9)} />
+                </div>
+            </div>
+        )  
+    }
+
+    componentDidMount() {
+        console.log('enter');
+    }
+
+    componentWillUnmount() {
+        console.log('leave');
+    }
+  
+}
+
+
+class Sudoku {
+    constructor () {
+        this.fill = this.generateArray()
+    }
+
+    generateArray () {
+       return Array(9).fill(0).map(x=>Array(9).fill(0).map(x=>Math.ceil(Math.random()*9)))
+    }
+
+    // get i row, j column in terms of sectors.
+    getThreeByThree(i,j) {
+        let r = [];
+        for (let x=0; x<3; x++) {
+            for (let y=0; y <3; y++) {
+                r.push(this.fill[x+3*i][y+3*j])
+            }
+        }
+        return r
+    }
+
+}
+
+class Board extends React.Component {
+    render () {
+        
+        let board = [];
+        for (let i of [0,1,2]) {
+            for (let j of [0,1,2]) {
+                board.push(
+                    <ThreeByThreeBoard key={i*3+j} fill={this.props.fill.getThreeByThree(i,j)} sec={[i,j]} onClick={this.props.onClick} />
+                )
+            }
+        }
+        return (
+            < div className="sudoku" >
+                < div className="board-row" >
+                   {board.slice(0,3)}
+                </div >
+                <div className="board-row">
+                    {board.slice(3, 6)}
+                </div>
+                <div className="board-row">
+                    {board.slice(6, 9)}
+                </div>
+            </div >
+        )
+    }
+}
 
 
 class Game extends React.Component {
     constructor(props) {
         super(props)
         this.state = {
-            history: [{ squares: Array(9).fill(null), }],
-            xISNext: true,
-            stepNumber: 0,
+            fill: new Sudoku(),
+            showMenu:false,
         }
+        this.handleClick = this.handleClick.bind(this)
+        this.removeInputMenu = this.removeInputMenu.bind(this)
+        
     }
 
     jumpTo(step) {
@@ -61,74 +143,32 @@ class Game extends React.Component {
         })
     }
 
-    handleClick(i) {
-        const history = this.state.history.slice(0, this.state.stepNumber + 1);
-        const current = history[history.length - 1];
-        const squares = current.squares.slice();
-        if (calculateWinner(squares) || squares[i]) {
-            return;
-        }
-        squares[i] = this.state.xIsNext ? 'X' : 'O';
-        this.setState({
-            history: history.concat({ squares: squares }),
-            stepNumber: history.length, xIsNext: !this.state.xIsNext
-        });
+    handleClick(index,sector,e) {
+        // console.log(index,sector,e);
+        let x = e.clientX, y = e.clientY
+        this.setState({showMenu:{left:x-100/2,top:y-100/2}}) 
+        // let el = () => { this.setState({ showMenu: false }); document.removeEventListener('click',el)}
+        document.body.addEventListener('click', this.removeInputMenu)
     }
-    render() {
-        const history = this.state.history;
-        const current = history[this.state.stepNumber];
-        const winner = calculateWinner(current.squares);
-        let status;
-        if (winner) {
-            status = 'Winner:' + winner;
-        } else {
-            status = 'Next player: ' + (this.state.xISNext ? 'X' : 'O');
-        }
-        const moves = history.map((_step, move) => {
-            const desc = move ? 'Go to move #' + move : 'Go to game start';
-            return (<li key={move}><button onClick={() => this.jumpTo(move)}>{desc}</button></li>)
-        })
+    
+    removeInputMenu(e) {
+        console.log(e.target);
+        this.setState({ showMenu: false });
+        document.body.removeEventListener('click', this.removeInputMenu)
+    }
 
+    handleMenuClick() {
+
+    }
+
+    render() {    
         return (
             <div className="game">
-                <div className="sudoku">
-                    <div className="board-row">
-                        <div className="three-board">
-                            <Board squares={current.squares} onClick={(i) => this.handleClick(i)} />
-                        </div>
-                        <div className="three-board">
-                            <Board squares={current.squares} onClick={(i) => this.handleClick(i)} />
-                        </div>
-                        <div className="three-board">
-                            <Board squares={current.squares} onClick={(i) => this.handleClick(i)} />
-                        </div>
-                    </div>
-                    <div className="board-row">
-                        <div className="three-board">
-                            <Board squares={current.squares} onClick={(i) => this.handleClick(i)} />
-                        </div>
-                        <div className="three-board">
-                            <Board squares={current.squares} onClick={(i) => this.handleClick(i)} />
-                        </div>
-                        <div className="three-board">
-                            <Board squares={current.squares} onClick={(i) => this.handleClick(i)} />
-                        </div>
-                    </div>
-                    <div className="board-row">
-                        <div className="three-board">
-                            <Board squares={current.squares} onClick={(i) => this.handleClick(i)} />
-                        </div>
-                        <div className="three-board">
-                            <Board squares={current.squares} onClick={(i) => this.handleClick(i)} />
-                        </div>
-                        <div className="three-board">
-                            <Board squares={current.squares} onClick={(i) => this.handleClick(i)} />
-                        </div>
-                    </div>
-                </div>
+                    <Board fill = {this.state.fill} onClick ={this.handleClick}/>
+                {this.state.showMenu ? <InputMenu showMenu={this.state.showMenu} onClick={this.handleMenuClick} />: null}
                 <div className="game-info">
-                    <div>{status}</div>
-                    <ol>{moves}</ol>
+                    {/* <div>{status}</div>
+                    <ol>{moves}</ol> */}
                 </div>
             </div>
         );
@@ -139,7 +179,6 @@ class Game extends React.Component {
 
 ReactDOM.render(
     <Game />,
-
     document.getElementById('root')
 );
 
@@ -164,136 +203,3 @@ function calculateWinner(squares) {
     }
     return null;
 }
-
-
-// class LoginControl extends React.Component{
-//     constructor(props) {
-//         super(props);
-//         this.handleLoginClick = this.handleLoginClick.bind(this)
-//         this.handleLogoutClick = this.handleLogoutClick.bind(this)
-//         this.state = {isLoggedIn:false}
-//     }
-
-//     handleLoginClick () {
-//         this.setState({isLoggedIn: true});
-//     }
-
-//     handleLogoutClick () {
-//         this.setState({isLoggedIn:false})
-//     }
-
-//     render() {
-//         const isLoggedIn = this.state.isLoggedIn;
-//         let button;
-//         button = isLoggedIn ? <LogoutButton onClick={this.handleLogoutClick}/> : 
-//                             <LoginButton onClick={this.handleLoginClick} />;
-//         return ( <div>
-//             <Greeting isLoggedIn={isLoggedIn}></Greeting>
-//             {button}
-//         </div> )
-//     }
-// }
-
-
-// function LogoutButton(props) {
-//     return <button onClick= {props.onClick}>LogOut</button>
-// }
-
-// function LoginButton(props) {
-//     return <button onClick = {props.onClick}>LogIn</button>
-// }
-
-// function Greeting(props) {
-//     if (props.isLoggedIn) {
-//         return <h1>Log in: ({props.isLoggedIn ? "True" : "False"})</h1>
-//     } else {
-//         return null
-//     }
-
-// }
-
-
-// ReactDOM.render(<LoginControl/>,document.getElementById('root'))
-
-
-
-// class NumberList extends React.Component {
-//     constructor (props) {
-//         super(props)
-//         this.state = {number:props.number}
-//     }
-
-//     render () {
-
-//         const numberList = Array.from(Array(10).keys()).map(e => e  + this.state.number);
-//         return (<ul>
-//             {numberList.map((e, i) => <li key={e}>{e}</li>)}
-//         </ul>)
-//     }
-
-//     componentDidMount () {
-//         this.timerID = setInterval(() => {
-//             this.setState((state,props)=>({
-//                 number: state.number + 1
-//             }))
-//         }, 1000);
-//     }
-
-//     componentWillUnmount() {
-//         clearInterval(this.timerID)
-//     }
-
-// }
-
-// ReactDOM.render(<NumberList number={5}></NumberList>,document.getElementById(
-//     'root'
-// ))
-
-
-
-// class NameForm extends React.Component {
-//     constructor (props) {
-//         super(props);
-//         this.state = { value: ["coconut"]};
-//         this.handleChange = this.handleChange.bind(this);
-//         this.handleSubmit = this.handleSubmit.bind(this);
-//     }
-
-//     handleChange (e) {
-//         console.log(e.target.value)
-//         this.setState({ value: [e.target.value]})
-//     }
-
-//     handleSubmit (e) {
-//         alert('submit' + this.state.value)
-//         e.preventDefault();
-//     }
-
-//     render() {
-//         return (
-//             <form onSubmit={this.handleSubmit}>
-//         <label>
-//           Pick your favorite flavor:
-//           <select value={["lime"]} multiple={true} onChange={this.handleChange}>
-//             <option value="grapefruit">Grapefruit</option>
-//             <option value="lime">Lime</option>
-//             <option value="coconut">Coconut</option>
-//             <option value="mango">Mango</option>
-//           </select>
-//         </label>
-//         <input type="submit" value="Submit" />
-//       </form>
-//         )
-//     }
-// }
-// ReactDOM.render(<NameForm/>, document.getElementById(
-//     'root'
-// ))
-
-
-// ReactDOM.render(<input value="hi" />, document.getElementById(
-//     'root'
-// ));
-
-
-
